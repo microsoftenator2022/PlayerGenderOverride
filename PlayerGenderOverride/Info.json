@@ -1,0 +1,12 @@
+﻿{
+  "Id": "PlayerGenderOverride",
+  "DisplayName": "Player Gender Override",
+  "Author": "Microsoftenator",
+  "Version": "1.0.0",
+  "ManagerVersion": "0.25.0",
+  "Requirements": [],
+  "AssemblyName": "PlayerGenderOverride.dll",
+  "EntryMethod": "PlayerGenderOverride.Main.Load",
+  "HomePage": "",
+  "Repository": ""
+}
