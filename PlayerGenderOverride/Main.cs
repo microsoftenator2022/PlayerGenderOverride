@@ -90,7 +90,7 @@ static class Main
                     // [prefix]{mf|<PcMaleString>|<PcFemaleString>}[suffix]
                     var regex =
 #if DEBUG
-                        new Regex(@"(?'prefix'\w*)\{mf\|(?'male'\w+)\|(?'female'\w+)\}(?'suffix')\w*");
+                        new Regex(@"(?'prefix'\w*)\{mf\|(?'male'\w+)\|(?'female'\w+)\}(?'suffix'\w*)");
 #else
                         new Regex(@"\w*\{mf\|\w+\|\w+\}\w*");
 #endif
