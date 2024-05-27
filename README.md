@@ -1,4 +1,4 @@
-# PlayerGenderOverride (WH40K: Rogue Trader)
+# Player Gender Override (WH40K: Rogue Trader)
 
 While the base game allows you to set your character's voice independently of 
 their body type, your character's gender is determined based on your chosen
