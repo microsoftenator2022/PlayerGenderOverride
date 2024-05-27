@@ -84,9 +84,16 @@ static class Main
 
                 if (locale != LocalizationManager.Instance.CurrentLocale)
                 {
+                    locale = LocalizationManager.Instance.CurrentLocale;
+
                     // Match format:
                     // [prefix]{mf|<PcMaleString>|<PcFemaleString>}[suffix]
-                    var regex = new Regex(@"\w*\{mf\|(?>\w+?\|\w+?)\}\w*");
+                    var regex =
+#if DEBUG
+                        new Regex(@"(?'prefix'\w*)\{mf\|(?'male'\w+)\|(?'female'\w+)\}(?'suffix')\w*");
+#else
+                        new Regex(@"\w*\{mf\|\w+\|\w+\}\w*");
+#endif
 
                     var list = new HashSet<string>();
 
@@ -98,25 +105,36 @@ static class Main
                         progress = (i, total);
                         foreach (var m in regex.Matches(s.Text).Cast<Match>().Where(m => m.Success))
                         {
-                            list.Add(m.Groups[0].Value);
+#if DEBUG
+                            if (!list.Contains(m.Value))
+                            {
+                                using var handle = ContextData<PooledStringBuilder>.Request();
+
+                                var sb = handle.Builder;
+                                sb.Clear();
+
+                                sb.AppendLine($"New key string \"{m.Value}\"");
+
+                                sb.AppendLine($"Prefix: \"{m.Groups["prefix"].Value}\"");
+                                sb.AppendLine($"Suffix: \"{m.Groups["suffix"].Value}\"");
+                                sb.AppendLine($"Male string: \"{m.Groups["male"].Value}\"");
+                                sb.AppendLine($"Female string: \"{m.Groups["female"].Value}\"");
+
+                                Main.Logger.Log(sb.ToString());
+
+                                sb.Clear();
+                            }
+#endif
+
+                            list.Add(m.Value);
                         }
 
                         i++;
                     }
-
-                    (locale, keys) = customKeys = (LocalizationManager.Instance.CurrentLocale, list.OrderBy(s => s).ToArray());
-#if DEBUG
-                    using var handle = ContextData<PooledStringBuilder>.Request();
-                    var sb = handle.Builder;
-                    sb.AppendLine($"Keys for locale {locale}:");
-
-                    foreach (var s in list)
-                        sb.AppendLine(s);
-
-                    Main.Logger.Log(sb.ToString());
-#endif
+                    keys = list.OrderBy(s => s).ToArray();
+                    customKeys = (locale, keys);
                 }
-
+                
                 return keys;
             });
 
@@ -233,7 +251,11 @@ static class Main
 
                 if (!getKeysTask.IsCompleted)
                 {
-                    GUILayout.Label($"Loading {i + 1}/{total}");
+                    GUILayout.Label($"Parsing strings"
+#if DEBUG
+                        + $" {i + 1}/{total}"
+#endif
+                        );
                 }
 
                 foreach (var key in getKeysTask.IsCompleted ? getKeysTask.Result : [])
