@@ -69,9 +69,13 @@ static class Main
 
         internal static bool UseCustom
         {
-            get =>
-                SettingsController.Instance.InSaveSettingsProvider.HasKey(CustomKey) &&
-                (SettingsController.Instance.InSaveSettingsProvider.GetValue<bool?>(CustomKey) ?? false);
+            get
+            {
+                return
+                    InGame &&
+                    SettingsController.Instance.InSaveSettingsProvider.HasKey(CustomKey) &&
+                    (SettingsController.Instance.InSaveSettingsProvider.GetValue<bool?>(CustomKey) ?? false);
+            }
             set
             {
                 if (value)
@@ -147,7 +151,8 @@ static class Main
         !Game.IsInMainMenu &&
         Game.Instance.SaveManager.CurrentState is not SaveManager.State.Loading &&
         //Game.Instance.UILoadingProgress >= 1.0 &&
-        Game.Instance?.Player is not null;
+        Game.Instance?.Player is not null &&
+        SettingsController.Instance?.InSaveSettingsProvider is not null;
 
     static (Locale, string[]) customKeys = ((Locale)(-1), []);
     static (int, int) progress = (0, 0);
@@ -300,13 +305,14 @@ static class Main
 
             if (Settings.UseCustom)
             {
-                static Dictionary<string, string>? getCustomMap()
-                {
-                    var value = Settings.CustomStrings;
-                    return value.Empty() ? null : value;
-                }
+                //static Dictionary<string, string>? getCustomMap()
+                //{
+                //    var value = Settings.CustomStrings;
+                //    return value.Empty() ? null : value;
+                //}
 
-                customMap = getCustomMap() ?? customMap;
+                //customMap = getCustomMap() ?? customMap;
+                customMap = Settings.CustomStrings;
                 var getKeysTask = GetCustomKeys();
                 
                 var (i, total) = progress;
