@@ -146,7 +146,6 @@ static class Main
     private static UnityModManager.ModEntry.ModLogger? log;
     internal static UnityModManager.ModEntry.ModLogger Logger => log!;
 
-    
     static bool InGame =>
         !Game.IsInMainMenu &&
         Game.Instance.SaveManager.CurrentState is not SaveManager.State.Loading &&
@@ -361,12 +360,10 @@ static class Main
                     GUILayout.EndHorizontal();
                 }
 
-                //SettingsController.Instance.InSaveSettingsProvider.SetValue(CustomStringsKey, customMap);
                 Settings.CustomStrings = customMap;
             }
             else
             {
-                //SettingsController.Instance.InSaveSettingsProvider.RemoveKey(CustomStringsKey);
                 Settings.CustomStrings = [];
             }
         }
@@ -442,6 +439,7 @@ static class GenderPatch
     }
 
     [HarmonyPatch(typeof(PcFemale), nameof(PcFemale.CheckCondition))]
+    [HarmonyBefore("0ToyBox0")]
     [HarmonyPostfix]
     static bool IsFemale_Patch(bool __result)
     {
@@ -451,6 +449,7 @@ static class GenderPatch
     }
 
     [HarmonyPatch(typeof(PcMale), nameof(PcMale.CheckCondition))]
+    [HarmonyBefore("0ToyBox0")]
     [HarmonyPostfix]
     static bool IsMale_Patch(bool __result)
     {
