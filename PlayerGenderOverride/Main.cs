@@ -22,6 +22,7 @@ using Kingmaker.Localization.Enums;
 using Kingmaker.PubSubSystem.Core;
 using Kingmaker.Settings;
 using Kingmaker.TextTools;
+using Kingmaker.TextTools.Base;
 using Kingmaker.TextTools.Core;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility.DotNetExtensions;
@@ -171,9 +172,11 @@ static class Main
                     // [prefix]{mf|<PcMaleString>|<PcFemaleString>}[suffix]
                     var regex =
 #if DEBUG
-                        new Regex(@"(?'prefix'\w*)\{mf\|(?'male'\w+)\|(?'female'\w+)\}(?'suffix'\w*)");
+                        //new Regex(@"(?'prefix'\w*)\{mf\|(?'male'\w+)\|(?'female'\w+)\}(?'suffix'\w*)");
+                        new Regex(@"(?'prefix'\w*)\{(?:rt_)?mf\|(?'male'\w+)\|(?'female'\w+)\}(?'suffix'\w*)");
 #else
-                        new Regex(@"\w*\{mf\|\w+\|\w+\}\w*");
+                        //new Regex(@"\w*\{mf\|\w+\|\w+\}\w*");
+                        new Regex(@"\w*\{(?:rt_)?mf\|\w+\|\w+\}\w*");
 #endif
 
                     var list = new HashSet<string>();
@@ -420,21 +423,69 @@ static class GenderPatch
         }
     }
 
-    [HarmonyPatch(typeof(MaleFemaleTemplate), nameof(MaleFemaleTemplate.Generate))]
-    [HarmonyTranspiler]
-    static IEnumerable<CodeInstruction> MaleFemaleTemplate_Generate_Transpiler(IEnumerable<CodeInstruction> instructions)
+    [HarmonyPatch]
+    static class TextTemplatePatches
     {
-        foreach (var i in instructions)
+        static IEnumerable<MethodInfo> TargetMethods() => new[]
         {
-            if (i.Calls(AccessTools.PropertyGetter(typeof(PartUnitDescription), nameof(PartUnitDescription.Gender))))
-            {
-                yield return new(OpCodes.Dup) { labels = i.labels };
-                i.labels = [];
-                yield return i;
+            typeof(MaleFemaleTemplate),
+            typeof(RtMaleFemaleTemplate)
+        }.Select(t => AccessTools.DeclaredMethod(t, nameof(TextTemplate.Generate)));
 
-                yield return new(OpCodes.Call, AccessTools.Method(typeof(GenderPatch), nameof(GenderPatch.PlayerGenderOverride)));
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase targetMethod)
+        {
+            Main.Logger.Log($"Patching {targetMethod.DeclaringType}.{targetMethod.Name}");
+
+            foreach (var i in instructions)
+            {
+                if (i.Calls(AccessTools.PropertyGetter(typeof(PartUnitDescription), nameof(PartUnitDescription.Gender))))
+                {
+                    yield return new(OpCodes.Dup) { labels = i.labels };
+                    i.labels = [];
+                    yield return i;
+
+                    yield return new(OpCodes.Call, AccessTools.Method(typeof(GenderPatch), nameof(GenderPatch.PlayerGenderOverride)));
+                }
+                else yield return i;
             }
-            else yield return i;
+        }
+    }
+
+    //[HarmonyPatch(typeof(MaleFemaleTemplate), nameof(MaleFemaleTemplate.Generate))]
+    //[HarmonyTranspiler]
+    //static IEnumerable<CodeInstruction> MaleFemaleTemplate_Generate_Transpiler(IEnumerable<CodeInstruction> instructions)
+    //{
+    //    foreach (var i in instructions)
+    //    {
+    //        if (i.Calls(AccessTools.PropertyGetter(typeof(PartUnitDescription), nameof(PartUnitDescription.Gender))))
+    //        {
+    //            yield return new(OpCodes.Dup) { labels = i.labels };
+    //            i.labels = [];
+    //            yield return i;
+
+    //            yield return new(OpCodes.Call, AccessTools.Method(typeof(GenderPatch), nameof(GenderPatch.PlayerGenderOverride)));
+    //        }
+    //        else yield return i;
+    //    }
+    //}
+
+    static Type? ToyboxMain => UnityModManager.ModEntries.FirstOrDefault(entry => entry.Info.Id == "0ToyBox0")?.Assembly
+        .GetTypes().FirstOrDefault(t => t.Name is "Main");
+
+    static bool ToyboxAnyGenderRomance
+    {
+        get
+        {
+            if (ToyboxMain is not { } t)
+                return false;
+            
+            if (AccessTools.Field(t, "Settings")?.GetValue(null) is not { } settings)
+                return false;
+
+            if (AccessTools.Field(settings.GetType(), "toggleAllowAnyGenderRomance")?.GetValue(settings) is bool enabled)
+                return enabled;
+
+            return false;
         }
     }
 
@@ -443,6 +494,11 @@ static class GenderPatch
     [HarmonyPostfix]
     static bool IsFemale_Patch(bool __result)
     {
+        if (ToyboxAnyGenderRomance)
+        {
+            return __result;
+        }
+        
         if (Main.Settings.Gender is null) return __result;
 
         return Main.Settings.Gender == Gender.Female;
@@ -453,6 +509,11 @@ static class GenderPatch
     [HarmonyPostfix]
     static bool IsMale_Patch(bool __result)
     {
+        if (ToyboxAnyGenderRomance)
+        {
+            return __result;
+        }
+
         if (Main.Settings.Gender is null) return __result;
 
         return Main.Settings.Gender == Gender.Male;
